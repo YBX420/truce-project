@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="TRUCE: semantics-aware runtime assurance for planner-agnostic quadrotor navigation. Anonymous research project.">
+  <meta name="robots" content="noindex, nofollow, noarchive">
+  <meta name="referrer" content="no-referrer">
+  <title>TRUCE | Semantics-Aware Runtime Assurance</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body><main class="page">
+  <header>
+    <h1 class="title">TRUCE: Semantics-Aware Runtime Assurance<br>for Planner-Agnostic Quadrotor Navigation</h1>
+    <p class="authors">Anonymous Authors</p>
+    <p class="venue">Anonymous review version</p>
+    <div class="links">
+      <span class="link-button unavailable">Paper · Incoming</span>
+      <a href="#videos" class="link-button">Videos · Incoming</a>
+      <span class="link-button unavailable">Data · Incoming</span>
+      <span class="link-button unavailable">Code · Incoming</span>
+    </div>
+  </header>
+
+  <figure class="teaser">
+    <a href="assets/architecture.png"><img src="assets/architecture.png" alt="TRUCE architecture: perception and route state feed a planner proposal, canonical adapter, swept-clearance checks, executability, continuation and short-prefix execution."></a>
+    <figcaption><strong>One execution contract for timed trajectories.</strong> TRUCE combines semantic scene state, persistent route context, continuous-time admission and structured recovery before releasing a short executable prefix.</figcaption>
+  </figure>
+
+  <section id="abstract">
+    <h2>Abstract</h2>
+    <p>Fast local optimization alone is insufficient for reliable drone navigation in cluttered urban environments. A smooth trajectory can be safe only at sampled times, make little route progress, or leave no useful response after the next observation. We present <strong>TRUCE (Trajectory Runtime Unified Contract for Execution)</strong>, a closed-loop architecture that gives different trajectory backbones one execution contract. Its scene state combines local occupancy, semantic actor classes, predicted motion, and persistent route context. Class-conditioned hard margins and severity-weighted ranking make proximity to a person more consequential than proximity to static structure. EGO, MINCO, SANDO, or MIGHTY supplies timed motion through a canonical adapter. Continuous-time swept occupancy, executability, continuation, and progress gates select an executable prefix; rejected proposals enter a structured recovery bank.</p>
+    <p>We evaluate the completed EGO-backed system on a stratified 130-seed benchmark: 100 point-mass planning tasks over 20 urban maps and 30 fixed-model quadrotor rollouts. Both strata use a forward 120°, 20 m occlusion-aware sensor; speed above the nominal 6 m/s setting is diagnostic rather than a failure. EGO+TRUCE reaches 127/130 seeds with one pedestrian contact and no invalid runs, compared with 26/130, 16 contacts, and two invalid runs for native EGO. In the point-mass stratum, it reaches 100/100 and reduces mean episode duration from 40.743 to 22.182 s. In the dynamics stratum, it reaches 27/30 versus 12/30, and 21 arrivals pass the strict fixed-model numerical flight audit. Its median contract decision takes 8.49 ms; the measured 338.27 ms full simulation step is dominated by depth, map, and evidence processing. The benchmark supplies simulator semantic labels after visibility filtering, so it evaluates class-aware planning but not end-to-end detector recall.</p>
+  </section>
+
+  <section id="method">
+    <h2>Method</h2>
+    <p>The backbone proposes timed motion; TRUCE determines what can be executed now. Canonical polynomial spans preserve physical timing and derivatives across planner representations. Four checks combine static and dynamic swept clearance, reference executability, a represented continuation, and progress-aware selection.</p>
+    <figure class="contract">
+      <img src="assets/contract.png" alt="Composite recovery trajectory: committed prefix, brake-to-rest branch and terminal hold, checked as one timed object." loading="lazy">
+      <figcaption><strong>Commit a prefix; preserve a response.</strong> The prefix, brake and terminal hold form one checked trajectory. The stored continuation begins at the exact prefix-end reference state.</figcaption>
+    </figure>
+    <h3>Semantic scene state and route memory</h3>
+    <p>Class-conditioned margins and severity weights distinguish moving people from static structure while keeping represented obstacles as hard collision constraints. Persistent route-side state and detour waypoints preserve progress around buildings, where moving toward the goal in a straight line can lead to repeated stalls.</p>
+    <h3>Admission and recovery</h3>
+    <p>A structured bank proposes lateral detours, climbs, braking and terminal holds. Every recovery candidate passes the same admission checks as a nominal proposal. Only a 0.30 s prefix is released before the scene and measured state are reconsidered. The continuation set is finite: exhausting that search does not prove that no physically feasible action exists.</p>
+  </section>
+
+  <section id="results">
+    <h2>Results</h2>
+    <p>The manuscript reports a matched EGO comparison across <strong>100 point-mass tasks and 30 quadrotor dynamics rollouts</strong>. These strata share a forward 120° field of view and a 20 m sensing range; time and latency remain separate because their execution models differ.</p>
+    <div class="table-wrap"><table>
+      <caption>Goal reach by execution model</caption>
+      <thead><tr><th scope="col">Evaluation</th><th scope="col">Native EGO</th><th scope="col">EGO + TRUCE</th><th scope="col">Change</th></tr></thead>
+      <tbody>
+        <tr><th scope="row">Point-mass · 100 seeds</th><td>14/100</td><td><strong>100/100</strong></td><td class="gain">+86.0 pp</td></tr>
+        <tr><th scope="row">Quadrotor dynamics · 30 seeds</th><td>12/30</td><td><strong>27/30</strong></td><td class="gain">+50.0 pp</td></tr>
+        <tr class="ours"><th scope="row">Aggregate · 130 seeds</th><td>26/130 (20.0%)</td><td>127/130 (97.7%)</td><td class="gain">+77.7 pp</td></tr>
+      </tbody>
+    </table></div>
+    <div class="table-wrap"><table>
+      <caption>Contacts, episode duration and computation</caption>
+      <thead><tr><th scope="col">Metric</th><th scope="col">Native EGO</th><th scope="col">EGO + TRUCE</th><th scope="col">Change</th></tr></thead>
+      <tbody>
+        <tr><th scope="row">Contacts · all 130 seeds ↓</th><td>16</td><td>1</td><td class="gain">−93.8%</td></tr>
+        <tr><th scope="row">Invalid runs · all 130 seeds ↓</th><td>2</td><td>0</td><td class="gain">−100.0%</td></tr>
+        <tr><th scope="row">Mean episode duration · point-mass ↓</th><td>40.743 s</td><td>22.182 s</td><td class="gain">−45.6%</td></tr>
+        <tr><th scope="row">Median tracking error · dynamics ↓</th><td>1.598 m</td><td>0.187 m</td><td class="gain">−88.3%</td></tr>
+        <tr><th scope="row">Median contract decision · dynamics ↓</th><td>0.14 ms</td><td>8.49 ms</td><td class="cost">+5964.3%</td></tr>
+        <tr><th scope="row">Median full simulation step · dynamics ↓</th><td>321.96 ms</td><td>338.27 ms</td><td class="cost">+5.1%</td></tr>
+        <tr><th scope="row">Strict audited arrivals · dynamics ↑</th><td>0/30</td><td>21/30</td><td class="gain">+70.0 pp</td></tr>
+      </tbody>
+    </table></div>
+    <p class="note">Green denotes an improvement and red an added computational cost; signed values and metric labels also express the direction. “pp” means percentage points. Relative changes follow the rounded values in the manuscript. Goal reach is distinct from a strict audited arrival.</p>
+    <p>The reported EGO+TRUCE dynamics outcomes include one pedestrian contact and two timeouts. Six of its 27 arrivals fail the fresh-geometric-admission requirement and are excluded from the 21 strict audited arrivals.</p>
+    <p class="note">Matched MINCO, SANDO, MIGHTY and EGO+Gatekeeper results are pending in this manuscript snapshot. Planner independence is an architectural property; the reported empirical comparison currently covers EGO.</p>
+  </section>
+
+  <section id="videos">
+    <h2>Videos</h2>
+    <p class="note">Incoming. Demonstrations are being prepared; the sections below describe the planned videos.</p>
+    <div class="planned-main"><span class="status">Incoming · 60–90 SEC</span><h3>TRUCE in urban navigation</h3><p>A synchronized native EGO / EGO+TRUCE walkthrough: forward observation, semantic obstacles, proposed trajectory, admitted prefix and recovery response. End with the reported benchmark outcomes.</p></div>
+    <div class="video-grid">
+      <article class="plan-card"><span class="status">Incoming · 30–45 SEC</span><h3>Persistent progress around buildings</h3><p>Show a matched detour with the same map, start and goal. Overlay route memory, travelled path and goal distance to make local stalling and sustained progress visible.</p></article>
+      <article class="plan-card"><span class="status">Incoming · 30–45 SEC</span><h3>Moving actors and occlusion</h3><p>Show a pedestrian emerging into the visible region, class-conditioned prediction envelopes, proposal rejection and the selected response.</p></article>
+      <article class="plan-card"><span class="status">Incoming · 30–45 SEC</span><h3>Prefix, brake and terminal hold</h3><p>Slow down one decision cycle. Distinguish the executed prefix from the stored continuation and align the reference with tracking error and vehicle constraints.</p></article>
+      <article class="plan-card"><span class="status">Incoming · 30–60 SEC</span><h3>Failure cases and audit limits</h3><p>Use the reported dynamics seed 7 contact and a timeout case. Mark recovery depletion and distinguish reaching the goal from satisfying every strict audit predicate.</p></article>
+    </div>
+    <p class="note">All planned demonstrations are simulation results. Matched videos will use the same scenario, observation setup and playback rate, with the execution model labelled.</p>
+  </section>
+
+  <section>
+    <h2>Limitations</h2>
+    <p>The benchmark uses visibility-filtered simulator semantics, one fixed quadrotor model and a finite continuation search. Safety statements depend on the represented obstacle envelopes and tracking assumptions. The evidence-heavy simulator misses its 100 ms wall-clock budget; these results do not establish end-to-end real-time performance or hardware flight safety. Additional planner pairs, perception evaluation, held-out scenarios and hardware flights remain to be validated.</p>
+  </section>
+  <section id="citation">
+    <h2>BibTeX</h2>
+    <p class="note">Incoming. Citation details will be available after the anonymous review period.</p>
+  </section>
+  <footer>
+    <p>Anonymous research project · Resources incoming</p>
+    <p>Layout inspired by the <a href="https://github.com/eliahuhorwitz/Academic-project-page-template">Academic Project Page Template</a> and Nerfies.</p>
+  </footer>
+</main></body>
+</html>
