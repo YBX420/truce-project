@@ -1,0 +1,62 @@
+WEBVTT
+
+1
+00:00:03.000 --> 00:00:09.086
+TRUCE is a safety layer for quadrotor navigation among static and moving obstacles in urban environments.
+
+2
+00:00:10.400 --> 00:00:14.102
+TRUCE combines route-guided recovery with predictive continuation.
+
+3
+00:00:16.300 --> 00:00:23.089
+A clear path can become blocked during execution. Safe navigation must account for what happens next.
+
+4
+00:00:24.300 --> 00:00:31.624
+When progress stops, waiting may also become unsafe. Recovery needs feasible motion and a safe next step.
+
+5
+00:00:32.300 --> 00:00:44.692
+TRUCE is designed for non-learning trajectory planners. We demonstrate it with EGO versions one and two, MINCO, and SANDO, combining route progress, recovery, and predictive continuation.
+
+6
+00:00:46.300 --> 00:01:02.423
+The base planner proposes a trajectory. TRUCE retains a route and monitors progress. When motion is blocked, recovery searches for an alternative. Continuation checks evaluate the next segment and a feasible follow-up, before tracking.
+
+7
+00:01:07.300 --> 00:01:14.307
+Here, EGO version one with TRUCE navigates a collection of fixed obstacles. All moving actors are disabled.
+
+8
+00:01:18.600 --> 00:01:25.521
+Next, we show four dynamic comparisons. Each pair starts together, with playback at normal speed.
+
+9
+00:01:28.300 --> 00:01:32.935
+With MINCO, observe how the vehicle responds as moving obstacles cross its path.
+
+10
+00:01:40.500 --> 00:01:44.450
+With SANDO, watch the avoidance maneuver and the return toward the goal.
+
+11
+00:01:54.900 --> 00:02:00.216
+With EGO version one, the comparison shows recovery and continued progress through the scene.
+
+12
+00:02:10.800 --> 00:02:16.976
+The final example uses EGO version two, illustrating the same safety layer with another planning backend.
+
+13
+00:02:30.600 --> 00:02:38.085
+Across one hundred shared dynamics tasks, EGO version one with TRUCE reaches eighty-three goals, with no recorded contacts.
+
+14
+00:02:41.600 --> 00:02:49.848
+With vehicle limits inactive, the cross-planner study reaches one hundred eighteen of one hundred twenty goals, with zero recorded contacts.
+
+15
+00:02:53.500 --> 00:02:54.645
+Thank you for watching.
+

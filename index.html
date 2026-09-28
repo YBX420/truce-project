@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="TRUCE: Route-Guided Recovery with Predictive Continuation for Quadrotor Navigation. Anonymous review version.">
+<meta name="description" content="TRUCE: route-guided recovery and predictive continuation for quadrotor navigation. Research video, system overview and simulation results across four planners.">
 <meta name="robots" content="noindex, nofollow, noarchive">
 <meta name="referrer" content="no-referrer">
 <title>TRUCE | Route-Guided Recovery with Predictive Continuation</title>
@@ -15,90 +15,103 @@
 <p class="authors">Anonymous Authors</p>
 <p class="venue">Anonymous review version</p>
 <div class="links">
+<a href="#videos" class="link-button">Watch video</a>
+<a href="#results" class="link-button">Results</a>
 <span class="link-button unavailable">Paper · Incoming</span>
-<a href="#videos" class="link-button">Videos · Incoming</a>
 <span class="link-button unavailable">Data · Incoming</span>
 <span class="link-button unavailable">Code · Incoming</span>
 </div>
 </header>
-<figure class="teaser">
-<a href="assets/route-guided-architecture.png"><img src="assets/route-guided-architecture.png" alt="TRUCE system integration and route-guided recovery: persistent route selection, motion selection, continuation checks and executed-state feedback."></a>
-<figcaption><strong>Route guidance, recovery and continuation in one loop.</strong> Perception and a native planner connect to the tracking controller through checked motion. Executed progress and rejection feed back into route selection.</figcaption>
-</figure>
 
-<section id="abstract"><h2>Abstract</h2>
-<p>Dynamic urban navigation requires useful detours, recovery from blocked motion, and a feasible continuation. We present <strong>TRUCE</strong>, a quadrotor navigation architecture coupling persistent route guidance, motion recovery, and predictive continuation checks. It evaluates native proposals and recovery motions against obstacle predictions and modeled execution, then feeds progress and rejection back to route selection. On 100 shared urban tasks with quadrotor dynamics, Truce-EGO reaches 83 goals versus 22 for official ROS EGO and 26 for EGO with Gatekeeper, with zero recorded contacts and 17 non-arrivals. Separately, we evaluate EGO, MINCO, and SANDO with and without TRUCE on the same 30 easy MetaUrban tasks in fake sim. Across the three planners, TRUCE increases arrivals from 77/90 to 88/90 and reduces contacts from five to zero. The results show improved task completion in the dynamics study and applicability across trajectory planners in fake sim; they do not establish unconditional physical safety.</p>
+<section id="videos"><h2>Research Video</h2>
+<p class="video-intro">Urban flight, static obstacle avoidance and dynamic comparisons across four trajectory planners. English narration · 2 min 57 s.</p>
+<video id="research-video" controls playsinline preload="metadata" poster="assets/video-poster.jpg" aria-label="TRUCE research demonstration with English narration" aria-describedby="video-description">
+<source src="assets/truce-research-film.mp4" type="video/mp4">
+<track kind="captions" src="assets/truce-narration-en.vtt" srclang="en" label="English">
+Your browser does not support embedded video. <a href="assets/truce-research-film.mp4">Download the research film</a>.
+</video>
+<p id="video-description" class="note">The film introduces the navigation problem and architecture, then shows a static obstacle collection and paired dynamic demonstrations. Two separate result tables close the film.</p>
+<div class="chapters" aria-label="Video chapters">
+<button type="button" data-seek="0">0:00 · Introduction</button>
+<button type="button" data-seek="46">0:46 · Architecture</button>
+<button type="button" data-seek="67">1:07 · Static obstacles</button>
+<button type="button" data-seek="78.3">1:18 · Dynamic comparisons</button>
+<button type="button" data-seek="150.2">2:30 · Results</button>
+</div>
+<p class="video-download"><a href="assets/truce-research-film.mp4" download>Download MP4 · 1080p · 18.93 MB</a> <span aria-hidden="true">/</span> <a href="assets/truce-narration-en.vtt" download>English captions</a></p>
 </section>
 
+<section id="abstract"><h2>Overview</h2>
+<p>Dynamic urban navigation requires useful detours, recovery from blocked motion and a feasible continuation. <strong>TRUCE</strong> connects these decisions around an existing trajectory planner. It retains a route, checks proposed motion and searches for recovery when needed. Before executing the next segment, it predicts vehicle motion and checks a follow-up. Measured progress and new observations guide the next decision.</p>
+<p>On 100 shared MetaUrban intersection tasks with quadrotor dynamics, TRUCE-EGO v1 reaches <strong>83 goals with no recorded contacts</strong>, compared with 22 goals for official ROS EGO v1 and 26 for EGO v1 with Gatekeeper. A complementary <strong>240-run study across EGO v1, EGO v2, MINCO and SANDO</strong> increases aggregate goal reaching from 104/120 to 118/120. The additional route, recovery and continuation checks increase computation and travel time.</p>
+</section>
+
+<figure class="teaser">
+<a href="assets/route-guided-architecture.png"><img src="assets/route-guided-architecture.png" alt="TRUCE connects a base planner to a tracking controller through route selection, recovery and continuation checks." loading="lazy"></a>
+<figcaption><strong>Route guidance, recovery and continuation in one loop.</strong> The base planner receives a local target; the tracking controller receives a checked segment. Measured progress and new observations update the next decision.</figcaption>
+</figure>
+
 <section id="method"><h2>Route-Guided Recovery and Continuation</h2>
-<h3>Persistent route guidance</h3>
-<p>A maintained route retains its branch and cursor and supplies a temporary target. Progress follows the remaining route cost rather than only straight-line distance to the goal. New occupancy, predicted conflicts and repeated fallback can revise the route. A route that ends at a reachable frontier remains partial guidance, not a complete mission solution.</p>
-<h3>Motion selection and recovery</h3>
-<p>TRUCE preserves usable native motion before expanding recovery search to route-following segments, lateral detours, moving escape and braking. Each candidate starts from the current state and must pass motion acceptance. Moving recovery matters when residual vehicle motion or an approaching actor makes waiting unsafe.</p>
-<h3>Predictive continuation and renewal</h3>
-<p>Acceptance checks the timed reference and modeled execution, then tests a subsequent response from the predicted switch state. The EGO dynamics configuration uses a 0.8 s moving preview and admits waiting over the next 0.1 s update interval. New observations renew the checks. Exhausted search reports an unavailable safe action; finite previews do not establish indefinite safety.</p>
-<h3>Rejoining the route across planners</h3>
-<p>Adapters preserve EGO B-splines, MINCO quintics and SANDO time-stamped polynomial segments. Replanning uses measured position, velocity and acceleration. The route cursor advances from executed position, and checked re-entry returns control to native motion without restarting an old curve at the wrong time.</p>
+<h3>Retain a route and measure progress</h3>
+<p>TRUCE retains a route and selects a visible local target. Progress is measured along the route, so a useful detour can be followed even when the next movement initially increases the distance to the destination. Blocked routes and repeated recovery without progress trigger replanning.</p>
+<h3>Find a recovery motion</h3>
+<p>The system keeps usable planner motion before searching route-following segments, lateral detours, moving escape and braking. Recovery starts from the current vehicle state. Predicting the movement matters when momentum or an approaching actor makes waiting unsafe.</p>
+<h3>Check what can follow</h3>
+<p>TRUCE checks both the timed reference and predicted vehicle motion. A candidate also needs a feasible continuation from its predicted switching state. Only the next checked segment executes before the process is updated with new observations.</p>
+<h3>Integrate with different planners</h3>
+<p>Adapters preserve EGO v1 B-splines, EGO v2 MINCO-based quintics, MINCO quintics and SANDO polynomial trajectories, including their timing and derivatives. Replanning uses measured position, velocity and acceleration. This lets the same coordination process work with different non-learning trajectory planners.</p>
 </section>
 
 <section id="results"><h2>Urban Dynamics: 100 Shared Tasks</h2>
-<p>The main study compares three complete navigation systems on 20 X-intersection scenes with five frozen routes per scene: <strong>300 runs, 100 tasks per method</strong>. Each task lasts at most 30 s. The compact-quad model integrates at 0.02 s with world updates at 0.1 s. Planner integrations differ, so this is not a pure safety-layer ablation on one identical EGO executable.</p>
+<p>The main study evaluates three navigation systems on 20 intersection scenes with five fixed routes per scene: <strong>300 runs, 100 tasks per system</strong>. The systems share tasks and a reduced-order quadrotor dynamics model, with each task lasting up to 30 s.</p>
 <div class="table-wrap"><table>
-<caption>X100 dynamics outcomes</caption>
-<thead><tr><th>Method</th><th>Reached</th><th>Rate</th><th>Contact</th><th>Timeout</th><th>SCF</th></tr></thead>
+<caption>Navigation outcomes with quadrotor dynamics</caption>
+<thead><tr><th scope="col">Method</th><th scope="col">Reached</th><th scope="col">Contact</th><th scope="col">Timeout</th><th scope="col">SAF</th></tr></thead>
 <tbody>
-<tr><th scope="row">Official ROS EGO</th><td>22/100</td><td>22.0%</td><td>77</td><td>1</td><td>0</td></tr>
-<tr><th scope="row">EGO + Gatekeeper</th><td>26/100</td><td>26.0%</td><td>1</td><td>4</td><td>69</td></tr>
-<tr class="ours"><th scope="row">Truce-EGO</th><td>83/100</td><td class="gain">83.0%</td><td class="gain">0</td><td>16</td><td>1</td></tr>
+<tr><th scope="row">Official ROS EGO v1</th><td>22/100</td><td>77</td><td>1</td><td>0</td></tr>
+<tr><th scope="row">EGO v1 + Gatekeeper</th><td>26/100</td><td>1</td><td>4</td><td>69</td></tr>
+<tr class="ours"><th scope="row">TRUCE-EGO v1</th><td class="gain">83/100</td><td class="gain">0</td><td>16</td><td>1</td></tr>
 </tbody></table></div>
-<p class="note">SCF: unavailable safe action. All failures remain in the denominator. Zero recorded contacts includes one early termination; it does not mean all 100 missions were safely completed.</p>
-<p class="gain">Reach: +61 percentage points versus ROS EGO (+277.3% relative), and +57 percentage points versus Gatekeeper (+219.2% relative).</p>
-<figure><img src="assets/x100-scenes.png" alt="Exact arrival counts across 20 scenes, with five routes each. Truce-EGO improves on both baselines in every scene." loading="lazy"><figcaption>Five shared routes per scene. Truce-EGO reaches five goals in seven scenes, four in nine, and three in four. This describes the fixed scene pool, not held-out generalization.</figcaption></figure>
-<h3>Matched arrivals and clearance</h3>
-<p>Truce-EGO retains 21 of 22 ROS EGO arrivals and adds 62; it retains 25 of 26 Gatekeeper arrivals and adds 58. Each comparison loses one baseline arrival.</p>
-<div class="table-wrap"><table><caption>Clearance over the same 21 ROS EGO / Truce-EGO arrivals; statistics aggregate per-task minima</caption>
-<thead><tr><th>Method</th><th>Minimum</th><th>Median</th><th>Mean</th></tr></thead><tbody>
-<tr><th scope="row">Official ROS EGO</th><td>0.000 m</td><td>0.821 m</td><td>0.860 m</td></tr>
-<tr><th scope="row">Truce-EGO</th><td>0.436 m</td><td>1.125 m</td><td>1.105 m</td></tr>
-<tr><th scope="row">Change</th><td class="gain">+0.436 m</td><td class="gain">+37.0%</td><td class="gain">+28.5%</td></tr>
-</tbody></table></div>
-<p class="note">The reached task x05-r4 records zero ROS EGO clearance; a relative gain from zero is undefined.</p>
+<p class="note">SAF: no candidate in the recovery search passed the motion checks.</p>
+<p class="gain">61 more goals than official ROS EGO v1; 57 more than EGO v1 with Gatekeeper.</p>
+<figure><img src="assets/x100-scenes.png" alt="Goals reached on five routes in each of 20 intersection scenes. TRUCE-EGO v1 reaches more goals than both baselines in every scene." loading="lazy"><figcaption>TRUCE-EGO v1 completes three to five routes per scene, with the highest goal-reaching count in all 20 scenes.</figcaption></figure>
+<h3>Clearance on matched arrivals</h3>
+<p>TRUCE-EGO v1 retains 21 of 22 ROS EGO v1 arrivals and adds 62. Across the 21 tasks completed by both systems, median taskwise minimum clearance increases from 0.821 m to 1.125 m.</p>
 </section>
 
-<section id="cross-planner"><h2>Cross-Planner Study: 180 Runs</h2>
-<p>A separate study evaluates native and TRUCE-integrated EGO, MINCO and SANDO on <strong>30 shared easy MetaUrban development tasks per arm</strong>. Fake sim uses an ideal translational double integrator with vehicle limits inactive and a forward virtual depth camera. These outcomes are not pooled with X100 dynamics.</p>
+<section id="cross-planner"><h2>Cross-Planner Study: 240 Runs</h2>
+<p>EGO v1, EGO v2, MINCO and SANDO are each evaluated with and without TRUCE on <strong>30 shared MetaUrban development tasks</strong>. This study uses a translational model and a forward depth camera, with vehicle limits disabled. Its results are reported separately from the quadrotor dynamics study.</p>
 <div class="table-wrap"><table>
-<caption>Navigation outcomes and whole-cycle computation</caption>
-<thead><tr><th>Method</th><th>Reach</th><th>Gain</th><th>Contact</th><th>Other failures</th><th>Plan p50 / p95 / p99 (ms)</th></tr></thead><tbody>
-<tr><th scope="row">EGO</th><td>27/30</td><td>—</td><td>3</td><td>0</td><td>38 / 48 / 58</td></tr>
-<tr><th scope="row">EGO + TRUCE</th><td>30/30</td><td class="gain">+10.0 pp</td><td>0</td><td>0</td><td>227 / 425 / 677</td></tr>
-<tr><th scope="row">MINCO</th><td>21/30</td><td>—</td><td>1</td><td>7 NC, 1 CU</td><td>23 / 50 / 68</td></tr>
-<tr><th scope="row">MINCO + TRUCE</th><td>28/30</td><td class="gain">+23.3 pp</td><td>0</td><td>2 timeouts</td><td>321 / 512 / 863</td></tr>
-<tr><th scope="row">SANDO</th><td>29/30</td><td>—</td><td>1</td><td>0</td><td>719 / 840 / 896</td></tr>
-<tr><th scope="row">SANDO + TRUCE</th><td>30/30</td><td class="gain">+3.3 pp</td><td>0</td><td>0</td><td>895 / 1182 / 2219</td></tr>
+<caption>Task outcomes and planning-cycle time</caption>
+<thead><tr><th scope="col">Method</th><th scope="col">Reached</th><th scope="col">Contact</th><th scope="col">Other failures</th><th scope="col">Plan p50 / p95 / p99 (ms)</th></tr></thead><tbody>
+<tr><th scope="row">EGO v1</th><td>27/30</td><td>3</td><td>0</td><td>38 / 48 / 58</td></tr>
+<tr class="ours"><th scope="row">EGO v1 + TRUCE</th><td>30/30</td><td>0</td><td>0</td><td>227 / 425 / 677</td></tr>
+<tr><th scope="row">EGO v2</th><td>27/30</td><td>3</td><td>0</td><td>121 / 174 / 218</td></tr>
+<tr class="ours"><th scope="row">EGO v2 + TRUCE</th><td>30/30</td><td>0</td><td>0</td><td>176 / 1178 / 1563</td></tr>
+<tr><th scope="row">MINCO</th><td>21/30</td><td>1</td><td>7 NC, 1 CU</td><td>23 / 50 / 68</td></tr>
+<tr class="ours"><th scope="row">MINCO + TRUCE</th><td>28/30</td><td>0</td><td>2 timeouts</td><td>321 / 512 / 863</td></tr>
+<tr><th scope="row">SANDO</th><td>29/30</td><td>1</td><td>0</td><td>719 / 840 / 896</td></tr>
+<tr class="ours"><th scope="row">SANDO + TRUCE</th><td>30/30</td><td>0</td><td>0</td><td>895 / 1182 / 2219</td></tr>
 </tbody></table></div>
-<p class="note">NC: no command; CU: unresolved collision. pp denotes percentage points. Planning quantiles are medians across runs of corresponding within-run statistics, not isolated optimizer timings.</p>
-<p>Across the three planners, arrivals increase from <strong>77/90 to 88/90 (+12.2 pp)</strong> and contacts fall from five to zero. Integrated runs recover 12 of 13 native non-arrivals and retain 76 of 77 native arrivals.</p>
-<h3>Computation and travel costs</h3>
-<p>Whole-cycle median latency increases by <span class="cost">5.9× for EGO, 13.8× for MINCO and 1.24× for SANDO</span>, using unrounded values. On common fake-sim arrivals, mean travel time increases by <span class="cost">29.6%, 114.4% and 81.2%</span>, respectively. MINCO and SANDO medians, and all three p99 summaries, exceed the 300 ms decision interval. Synchronous simulation does not expose the vehicle to computation delay.</p>
-<p class="note">X100 records solver and selection components, not full Truce-EGO cycle timings, so no equal-scope computation comparison is available for that study. Paired X100 travel increases are 6.10 s versus ROS EGO and 4.07 s versus Gatekeeper.</p>
+<p class="note">NC: no command; CU: unresolved collision. Timing values are medians across runs of the corresponding within-run planning-cycle statistic.</p>
+<p>Across all four planners, goal reaching increases from <strong>104/120 (86.7%) to 118/120 (98.3%)</strong>, while recorded contacts fall from eight to zero. TRUCE recovers 15 of 16 baseline failures and preserves 103 of 104 baseline arrivals.</p>
+<h3>Computation and travel</h3>
+<p>Median planning-cycle time increases for all four planners, by 56 ms for EGO v2 up to 298 ms for MINCO. Travel time also increases, while path length changes less. Reducing recovery and verification costs is a next priority. The simulation pauses during planning, so these timings describe computational cost rather than demonstrated onboard real-time performance.</p>
 </section>
 
-<section id="qualitative"><h2>Qualitative Navigation</h2>
+<section id="qualitative"><h2>Navigation in a Dynamic Scene</h2>
 <div class="video-grid">
-<figure><img src="assets/seed11-ego.png" alt="Official ROS EGO approaches the actor conflict in the seed 11 replay." loading="lazy"><figcaption>Official ROS EGO · t = 5.4 s</figcaption></figure>
-<figure><img src="assets/seed11-truce.png" alt="Truce-EGO takes a curved detour around the actor cluster in the seed 11 replay." loading="lazy"><figcaption>Truce-EGO · t = 5.4 s</figcaption></figure>
+<figure><img src="assets/seed11-ego.png" alt="Official ROS EGO v1 approaches the actor cluster in an illustrative replay." loading="lazy"><figcaption>Official ROS EGO v1</figcaption></figure>
+<figure><img src="assets/seed11-truce.png" alt="TRUCE-EGO v1 follows a curved detour around the actor cluster in the matched replay." loading="lazy"><figcaption>TRUCE-EGO v1</figcaption></figure>
 </div>
-<p>In this selected seed 11 replay, ROS EGO records contact at 5.6 s; Truce-EGO detours and reaches the goal at 12.6 s. Cyan denotes the route, yellow predicted actor motion and magenta the next setpoint. These illustrative replay frames are not additional benchmark samples or a causal ablation.</p>
+<p>These replay frames illustrate the navigation behaviour: the base system approaches an actor cluster, while TRUCE detours and continues towards the destination. The video above shows full motion sequences and paired comparisons.</p>
 </section>
 
-<section id="videos"><h2>Videos · Incoming</h2>
-<p class="note">Demonstrations are being prepared to accompany the current manuscript.</p>
+<section id="next-steps"><h2>Next Steps</h2>
+<p>Further work will reduce computation time, isolate the contribution of each module and test the complete perception, planning and control loop on physical platforms.</p>
 </section>
-
-<section><h2>Limitations</h2>
-<p>The studies use simulator semantics and configured geometry interfaces; X100 static recovery checks access simulator static geometry. They do not establish detector performance or unknown-map generalization. Easy fake-sim tasks do not establish cross-planner robustness on harder environments. Neither study isolates individual modules through ablation.</p>
-</section>
-<section id="citation"><h2>BibTeX</h2><p class="note">Incoming. Citation details will be available after the anonymous review period.</p></section>
-<footer><p>Anonymous research project · Resources incoming</p><p>Layout inspired by the <a href="https://github.com/eliahuhorwitz/Academic-project-page-template">Academic Project Page Template</a> and Nerfies.</p></footer>
-</main></body></html>
+<section id="citation"><h2>BibTeX</h2><p class="note">Citation details will be available after the anonymous review period.</p></section>
+<footer><p>Anonymous research project · Updated 28 September 2026</p><p>Layout inspired by the <a href="https://github.com/eliahuhorwitz/Academic-project-page-template">Academic Project Page Template</a> and Nerfies.</p></footer>
+</main>
+<script src="video.js" defer></script>
+</body></html>
